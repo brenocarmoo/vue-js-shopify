@@ -26,11 +26,23 @@
       </div>
     {% endif %}
     <form action="/cart/add" method="post">
-      <input type="hidden" name="id" value="{{ product.selected_or_first_available_variant.id }}">
-      <input type="hidden" name="quantity" value="1">
+      <input
+        type="hidden"
+        name="id"
+        value="{{ product.selected_or_first_available_variant.id }}">
+      <input
+        type="hidden"
+        name="quantity"
+        value="1">
       <button type="submit" class="atc">
         Add to cart
       </button>
     </form>
   </div>
 </div>
+
+<script>
+  const ProductPage = {}
+
+  Vue.createApp(ProductPage).mount('#product-page');
+</script>
