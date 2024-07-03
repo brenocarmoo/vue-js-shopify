@@ -10,34 +10,76 @@
       >
     </transition>
   </div>
+
   <div class="product-meta">
     <h1 class="product-title">{{ product.title }}</h1>
     <div class="product-price" v-html="current_variant.price"></div>
     <div class="product-description">{{ product.description }}</div>
-    {% if product.variants.size > 1 %}
-      <div class="variant-select">
-        {% for product_option in product.options_with_values %}
-          <label for="{{ product_option.name }}">
-            {{ product_option.name }}
-          </label>
-          <select
-            id="{{ product_option.name }}"
-            v-model="variant_selection.option{{ product_option.position }}"
-            @change="variant_from_options"
-          >
+
+    <div class="product-quantity" style="display: flex; flex-direction: column;">
+      <span>Quantidade</span>
+      <label>
+        1 unidade
+        <input type="radio" v-model="selectedValue" value="1" @change="handleChange">
+      </label>
+      <label>
+        2 unidades
+        <input type="radio" v-model="selectedValue" value="2" @change="handleChange">
+      </label>
+      <label>
+        3 unidades
+        <input type="radio" v-model="selectedValue" value="3" @change="handleChange">
+      </label>
+    </div>
+
+    <div class="variantes">
+      <label v-for="variant in variants" :key="variant.id">
+        <div v-html="variant.title"></div>
+        <input type="number" :max="variant.max">
+      </label>
+    </div>
+
+    {% comment %}
+      {% if product.variants.size > 1 %}
+        <div class="variant-select">
+          {% for product_option in product.options_with_values %}
+            <label for="{{ product_option.name }}">
+              {{ product_option.name }}
+            </label>
+
             {% for value in product_option.values %}
-              <option
-                {% if product_option.selected_value == value %}
-                  selected
-                {% endif %}
-              >
+              <label id="{{ product_option.name }}">
                 {{ value }}
-              </option>
+                <input
+                  type="number"
+                  min="0"
+                  :max="variants.max"
+                >
+              </label>
             {% endfor %}
-          </select>
-        {% endfor %}
-      </div>
-    {% endif %}
+
+            {% comment %}
+              <select
+                id="{{ product_option.name }}"
+                v-model="variant_selection.option{{ product_option.position }}"
+                @change="variant_from_options"
+              >
+                {% for value in product_option.values %}
+                  <option
+                    {% if product_option.selected_value == value %}
+                      selected
+                    {% endif %}
+                  >
+                    {{ value }}
+                  </option>
+                {% endfor %}
+              </select>
+            {% endcomment %}
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endcomment %}
+
     <form action="/cart/add" method="post">
       <input
         type="hidden"
@@ -47,7 +89,7 @@
       <input
         type="hidden"
         name="quantity"
-        value="1"
+        :value="selectedValue"
       >
       <button type="submit" class="atc">Add to cart</button>
     </form>
@@ -58,6 +100,7 @@
   const ProductPage = {
     data() {
       return {
+        selectedValue: null,
         current_variant_id: '{{ product.selected_or_first_available_variant.id }}',
         variant_selection: {
           option1: "{{ product.options_with_values[0].selected_value }}",
@@ -67,12 +110,15 @@
         variants: [
           {% for variant in product.variants %}
             {
+              title: "{{ variant.title }}",
               id: "{{ variant.id }}",
               available: {{ variant.available }},
               option1: "{{ variant.option1 }}",
               option2: "{{ variant.option2 }}",
               option3: "{{ variant.option3 }}",
               price: "{{ variant.price | money }}",
+              quantity: 0,
+              max: 1,
               {% assign img_url = variant.image.src | img_url: '500x', scale: 2 %}
               image: "{% unless img_url contains 'no-image' %}{{ img_url }}{% endunless %}"
             },
@@ -87,6 +133,26 @@
       }
     },
     methods: {
+      handleChange(event){
+        this.selectedValue = parseInt(event.target.value);
+        this.updateMaxValues();
+      },
+      updateMaxValues(){
+        this.variants.forEach(variant => {
+          variant.max = this.selectedValue;
+        })
+      },
+      updateQuantities(selectedVariant){
+        if (this.selectedValue === 1){
+          this.variants.forEach(variant => {
+            if (variant.id !== selectedVariant){
+              variant.max = 0;
+            }
+          });
+        } else {
+          this.updateMaxValues();
+        }
+      },
       variant_from_options() {
         const variant = this.variants.find((variant) => {
           var match = true;
@@ -111,7 +177,7 @@
 
         var newurl = window.location.protocol + '//' + window.location.host + window.location.pathname + '?variant=' + variant.id;
         window.history.replaceState({path: newurl}, '', newurl);
-      }
+      },
     }
   };
 
