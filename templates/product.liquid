@@ -25,7 +25,8 @@
         {% endfor %}
       </div>
     {% endif %}
-    cu assado
+    teste
+    test
     <form action="/cart/add" method="post">
       <input type="hidden" name="id" value="{{ product.selected_or_first_available_variant.id }}">
       <input type="hidden" name="quantity" :value="current_variant_id">
@@ -35,7 +36,6 @@
     </form>
   </div>
 </div>
-
 
 <script>
   const ProductPage = {
