@@ -3,181 +3,59 @@
 
 <div id="product-page" class="product-page container">
   <div class="product-photo">
-    <transition name="fade">
-      <img
-        :src="current_variant.image || fallback_product_image"
-        :key="current_variant.image || fallback_product_image"
-      >
-    </transition>
+    <img src="{{ featured_image | img_url: '500x', scale: 2 }}">
   </div>
-
   <div class="product-meta">
     <h1 class="product-title">{{ product.title }}</h1>
-    <div class="product-price" v-html="current_variant.price"></div>
+    <div class="product-price">{{ product.price | money }}</div>
     <div class="product-description">{{ product.description }}</div>
-
-    <div class="product-quantity" style="display: flex; flex-direction: column;">
-      <span>Quantidade</span>
-      <label>
-        1 unidade
-        <input type="radio" v-model="selectedValue" value="1" @change="handleChange">
-      </label>
-      <label>
-        2 unidades
-        <input type="radio" v-model="selectedValue" value="2" @change="handleChange">
-      </label>
-      <label>
-        3 unidades
-        <input type="radio" v-model="selectedValue" value="3" @change="handleChange">
-      </label>
-    </div>
-
-    <div class="variantes">
-      <label v-for="variant in variants" :key="variant.id">
-        <div v-html="variant.title"></div>
-        <input type="number" :max="variant.max">
-      </label>
-    </div>
-
-    {% comment %}
-      {% if product.variants.size > 1 %}
-        <div class="variant-select">
-          {% for product_option in product.options_with_values %}
-            <label for="{{ product_option.name }}">
-              {{ product_option.name }}
-            </label>
-
+    {% if product.variants.size > 1 %}
+      <div class="variant-select">
+        {% for product_option in product.options_with_values %}
+          <label for="{{ product_option.name }}">
+            {{ product_option.name }}
+          </label>
+          <select id="{{ product_option.name }}">
             {% for value in product_option.values %}
-              <label id="{{ product_option.name }}">
+              <option {% if product_option.selected_value == value %}selected{% endif %}>
                 {{ value }}
-                <input
-                  type="number"
-                  min="0"
-                  :max="variants.max"
-                >
-              </label>
+              </option>
             {% endfor %}
-
-            {% comment %}
-              <select
-                id="{{ product_option.name }}"
-                v-model="variant_selection.option{{ product_option.position }}"
-                @change="variant_from_options"
-              >
-                {% for value in product_option.values %}
-                  <option
-                    {% if product_option.selected_value == value %}
-                      selected
-                    {% endif %}
-                  >
-                    {{ value }}
-                  </option>
-                {% endfor %}
-              </select>
-            {% endcomment %}
-          {% endfor %}
-        </div>
-      {% endif %}
-    {% endcomment %}
-
+          </select>
+        {% endfor %}
+      </div>
+    {% endif %}
+    cu assado
     <form action="/cart/add" method="post">
-      <input
-        type="hidden"
-        name="id"
-        :value="current_variant_id"
-      >
-      <input
-        type="hidden"
-        name="quantity"
-        :value="selectedValue"
-      >
-      <button type="submit" class="atc">Add to cart</button>
+      <input type="hidden" name="id" value="{{ product.selected_or_first_available_variant.id }}">
+      <input type="hidden" name="quantity" :value="current_variant_id">
+      <button type="submit" class="atc">
+        Add to cart
+      </button>
     </form>
   </div>
 </div>
 
+
 <script>
   const ProductPage = {
     data() {
-      return {
-        selectedValue: null,
-        current_variant_id: '{{ product.selected_or_first_available_variant.id }}',
-        variant_selection: {
-          option1: "{{ product.options_with_values[0].selected_value }}",
-          option2: "{{ product.options_with_values[1].selected_value }}",
-          option3: "{{ product.options_with_values[2].selected_value }}",
-        },
-        variants: [
-          {% for variant in product.variants %}
-            {
-              title: "{{ variant.title }}",
-              id: "{{ variant.id }}",
-              available: {{ variant.available }},
-              option1: "{{ variant.option1 }}",
-              option2: "{{ variant.option2 }}",
-              option3: "{{ variant.option3 }}",
-              price: "{{ variant.price | money }}",
-              quantity: 0,
-              max: 1,
-              {% assign img_url = variant.image.src | img_url: '500x', scale: 2 %}
-              image: "{% unless img_url contains 'no-image' %}{{ img_url }}{% endunless %}"
-            },
-          {% endfor %}
-        ],
-        fallback_product_image: "{{ featured_image | img_url: '500x', scale: 2 }}"
-      };
-    },
-    computed: {
-      current_variant() {
-        return this.variants.find(variant => variant.id == this.current_variant_id);
-      }
-    },
-    methods: {
-      handleChange(event){
-        this.selectedValue = parseInt(event.target.value);
-        this.updateMaxValues();
-      },
-      updateMaxValues(){
-        this.variants.forEach(variant => {
-          variant.max = this.selectedValue;
-        })
-      },
-      updateQuantities(selectedVariant){
-        if (this.selectedValue === 1){
-          this.variants.forEach(variant => {
-            if (variant.id !== selectedVariant){
-              variant.max = 0;
-            }
-          });
-        } else {
-          this.updateMaxValues();
-        }
-      },
-      variant_from_options() {
-        const variant = this.variants.find((variant) => {
-          var match = true;
-          if(variant.option1 != ''){
-            match = variant.option1 == this.variant_selection.option1
-          }
-          if(match && variant.option2 != ''){
-             match = variant.option2 == this.variant_selection.option2
-          }
-          if(match && variant.option3 != ''){
-             match = variant.option3 == this.variant_selection.option3
-          }
-          return match;
-        });
-        this.current_variant_id = variant.id;
-        this.update_history_state(variant);
-      },
-      update_history_state(variant){
-        if(!history.replaceState || !variant){
-          return;
-        }
-
-        var newurl = window.location.protocol + '//' + window.location.host + window.location.pathname + '?variant=' + variant.id;
-        window.history.replaceState({path: newurl}, '', newurl);
-      },
+      current_variant_id: "{{ product.selected_or_first_available_variant.id }}",
+      variant: [
+        {% for variant in product.variants %}
+          {
+            id: "{{ variant.id }}",
+            available: "{{ variant.available }}",
+            option1: "{{ variant.option1 }}",
+            option2: "{{ variant.option2 }}",
+            option3: "{{ variant.option3 }}",
+            price: "{{ variant.price | money }}",
+            {% assign img_url = variant.image.src | img_url: '500x', scale: 2 %}
+            image: "{% unless img_url contains 'no-image' %}{{ img_url }}{% endunless %}"
+          },
+        {% endfor %}
+      ],
+      fallback_product_image: "{{ featured_image | img_url: '500x', scale: 2 }}"
     }
   };
 
